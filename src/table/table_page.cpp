@@ -34,7 +34,18 @@ slotid_t TablePage::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_
   // 将 record 写入 page data
   // 将 page 标记为 dirty
   // LAB 1 BEGIN
-  return 0;
+  *lower_ += sizeof(Slot);
+  *upper_ -= record->GetSize();
+  
+  Slot* slot = reinterpret_cast<Slot*>(page_data_ + *lower_ - sizeof(Slot));
+  slot->offset_ = *upper_;
+  slot->size_ = record->GetSize();
+
+  record->SerializeTo(page_data_ + *upper_);
+
+  page_->SetDirty();
+  
+  return (*lower_ - sizeof(Slot)) / sizeof(Slot);
 }
 
 void TablePage::DeleteRecord(slotid_t slot_id, xid_t xid) {
@@ -44,6 +55,12 @@ void TablePage::DeleteRecord(slotid_t slot_id, xid_t xid) {
   // 将 slot_id 对应的 record 标记为删除
   // 将 page 标记为 dirty
   // LAB 1 BEGIN
+
+  Slot *target_slot = reinterpret_cast<Slot *>(page_data_ + PAGE_HEADER_SIZE + slot_id * sizeof(Slot));
+  Record *target_record = reinterpret_cast<Record *>(page_data_ + target_slot->offset_);
+  target_record->SetDeleted(true);
+
+  page_->SetDirty();
 }
 
 std::unique_ptr<Record> TablePage::GetRecord(slotid_t slot_id, const ColumnList &column_list) {

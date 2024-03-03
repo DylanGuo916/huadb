@@ -36,8 +36,9 @@ slotid_t TablePage::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_
   // LAB 1 BEGIN
   *lower_ += sizeof(Slot);
   *upper_ -= record->GetSize();
-  
-  Slot* slot = reinterpret_cast<Slot*>(page_data_ + *lower_ - sizeof(Slot));
+
+  db_size_t offset = *lower_ - sizeof(Slot);
+  Slot* slot = reinterpret_cast<Slot*>(page_data_ + offset);
   slot->offset_ = *upper_;
   slot->size_ = record->GetSize();
 
@@ -55,8 +56,9 @@ void TablePage::DeleteRecord(slotid_t slot_id, xid_t xid) {
   // 将 slot_id 对应的 record 标记为删除
   // 将 page 标记为 dirty
   // LAB 1 BEGIN
-
-  Slot *target_slot = reinterpret_cast<Slot *>(page_data_ + PAGE_HEADER_SIZE + slot_id * sizeof(Slot));
+  
+  db_size_t offset = PAGE_HEADER_SIZE + slot_id * sizeof(Slot);
+  Slot *target_slot = reinterpret_cast<Slot *>(page_data_ + offset);
   Record *target_record = reinterpret_cast<Record *>(page_data_ + target_slot->offset_);
   target_record->SetDeleted(true);
 
@@ -65,8 +67,20 @@ void TablePage::DeleteRecord(slotid_t slot_id, xid_t xid) {
 
 std::unique_ptr<Record> TablePage::GetRecord(slotid_t slot_id, const ColumnList &column_list) {
   // 根据 slot_id 获取 record
-  // LAB 1 BEGIN
-  return nullptr;
+  // LAB 1 
+  
+  db_size_t offset = PAGE_HEADER_SIZE + slot_id * sizeof(Slot);
+  if (offset > *lower_ - sizeof(Slot)) {
+    return nullptr;
+  }
+
+  Slot *target_slot = reinterpret_cast<Slot *>(page_data_ + offset);
+
+  offset = target_slot->offset_;
+  auto record = std::make_unique<Record>();
+  record->DeserializeFrom(page_data_ + offset, column_list);
+
+  return record;
 }
 
 void TablePage::UndoDeleteRecord(slotid_t slot_id) {

@@ -27,7 +27,12 @@ Rid Table::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid, bo
     throw DbException("Record size too large: " + std::to_string(record->GetSize()));
   }
 
-
+  // 当 write_log 参数为 true 时开启写日志功能
+  // 在插入记录时增加写 InsertLog 过程
+  // 在创建新的页面时增加写 NewPageLog 过程
+  // 设置页面的 page lsn
+  // LAB 2 BEGIN
+  
   // 使用 buffer_pool_ 获取页面
   // 使用 TablePage 类操作记录页面
   // 遍历表的页面，判断页面是否有足够的空间插入记录，如果没有则通过 buffer_pool_ 创建新页面

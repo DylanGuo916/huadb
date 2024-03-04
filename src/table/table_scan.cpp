@@ -30,21 +30,26 @@ std::shared_ptr<Record> TableScan::GetNextRecord(xid_t xid, IsolationLevel isola
       // valid slot_id
       record = table_page->GetRecord(rid_.slot_id_, table_->GetColumnList());
       rid_.slot_id_ += 1;
-    } else if (table_page->GetNextPageId() != NULL_PAGE_ID) {
-      // invalid slot_id, next page exists
-      rid_.page_id_ = table_page->GetNextPageId();
-      rid_.slot_id_ = 0;
-      table_page = std::make_unique<TablePage>(buffer_pool_.GetPage(table_->GetDbOid(), table_->GetOid(), rid_.page_id_));
-      record = table_page->GetRecord(rid_.slot_id_, table_->GetColumnList());
-      rid_.slot_id_ += 1;
     } else {
-      // invalid slot_id, last page
-      rid_.page_id_ = NULL_PAGE_ID;
-      rid_.slot_id_ = 0;
-      return nullptr;
+      if (table_page->GetNextPageId() != NULL_PAGE_ID) {
+        // invalid slot_id, next page exists
+        rid_.page_id_ = table_page->GetNextPageId();
+        rid_.slot_id_ = 0;
+        table_page =
+            std::make_unique<TablePage>(buffer_pool_.GetPage(table_->GetDbOid(), table_->GetOid(), rid_.page_id_));
+        record = table_page->GetRecord(rid_.slot_id_, table_->GetColumnList());
+        rid_.slot_id_ += 1;
+      } else {
+        // invalid slot_id, last page
+        rid_.page_id_ = NULL_PAGE_ID;
+        rid_.slot_id_ = 0;
+        return nullptr;
+      }
     }
+    if (record->IsDeleted()) continue;
     return record;
   }
+  return nullptr;
 }
 
 }  // namespace huadb

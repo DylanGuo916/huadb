@@ -57,10 +57,14 @@ void TablePage::DeleteRecord(slotid_t slot_id, xid_t xid) {
   // 将 page 标记为 dirty
   // LAB 1 BEGIN
   
-  db_size_t offset = PAGE_HEADER_SIZE + slot_id * sizeof(Slot);
-  Slot *target_slot = reinterpret_cast<Slot *>(page_data_ + offset);
-  Record *target_record = reinterpret_cast<Record *>(page_data_ + target_slot->offset_);
-  target_record->SetDeleted(true);
+  db_size_t slot_offset = PAGE_HEADER_SIZE + slot_id * sizeof(Slot);
+  Slot *delete_slot = reinterpret_cast<Slot *>(page_data_ + slot_offset);
+  db_size_t record_offset = delete_slot->offset_;
+
+  auto delete_record = std::make_unique<Record>();
+  delete_record->DeserializeHeaderFrom(page_data_ + record_offset);
+
+  delete_record->SetDeleted(true);
 
   page_->SetDirty();
 }

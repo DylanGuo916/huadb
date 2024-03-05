@@ -12,9 +12,7 @@ void LRUBufferStrategy::Access(size_t frame_no) {
     access_order_.erase(page_map_[frame_no]);
   } else if (access_order_.size() >= BUFFER_SIZE) {
     // 如果达到缓存容量上限且页面不在缓存中，则需要先淘汰一个页面
-    auto evict_frame_no = Evict();
-    page_map_.erase(evict_frame_no);
-    access_order_.pop_back();
+    Evict();
   }
 
   // 将页面添加到访问顺序的前面
@@ -28,7 +26,10 @@ size_t LRUBufferStrategy::Evict() {
   // 缓存页面淘汰，返回淘汰的页面在 buffer pool 中的下标
   // LAB 1 BEGIN
 
-  return access_order_.back();
+  auto evict_frame_no = access_order_.back();
+  page_map_.erase(evict_frame_no);
+  access_order_.pop_back();
+  return evict_frame_no;
 }
 
 }  // namespace huadb

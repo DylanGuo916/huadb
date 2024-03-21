@@ -196,7 +196,7 @@ void LogManager::Rollback(xid_t xid) {
       log_record->DeserializeFrom(lsn, log.get());
     }
     lsn = log_record->GetPrevLSN();
-    log_record->Undo(buffer_pool_, catalog_, *this, lsn);
+    log_record->Undo(*buffer_pool_, *catalog_, *this, lsn);
   }
 }
 

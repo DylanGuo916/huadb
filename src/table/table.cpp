@@ -58,6 +58,12 @@ Rid Table::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid, bo
       new_table_page->Init();
       current_table_page->SetNextPageId(current_page_id+1);
       target_table_page = std::move(new_table_page);
+
+      if (write_log) {
+        lsn_t lsn = log_manager_.AppendNewPageLog(xid, oid_, current_page_id, current_page_id + 1);
+        target_table_page->SetPageLSN(lsn);
+      }
+
       break;
     }
 
@@ -68,7 +74,17 @@ Rid Table::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid, bo
     throw DbException("Failed to find or create a suitable page for the record.");
   }
 
-  return {current_page_id, target_table_page->InsertRecord(record, xid, cid)};
+  slotid_t slot_id = target_table_page->InsertRecord(record, xid, cid);
+
+  if (write_log) {
+    db_size_t offset = target_table_page->GetUpper();
+    char data[MAX_RECORD_SIZE];
+    db_size_t size = record->SerializeTo(data);
+    lsn_t lsn = log_manager_.AppendInsertLog(xid, oid_, current_page_id, slot_id, offset, size, data);
+    target_table_page->SetPageLSN(lsn);
+  }
+
+  return {current_page_id, slot_id};
 }
 
 void Table::DeleteRecord(const Rid &rid, xid_t xid, bool write_log) {
@@ -79,8 +95,13 @@ void Table::DeleteRecord(const Rid &rid, xid_t xid, bool write_log) {
   // 使用 TablePage 结构体操作记录页面
   // LAB 1 BEGIN
   
-  auto target_page = std::make_unique<TablePage>(buffer_pool_.GetPage(db_oid_, oid_, rid.page_id_));
-  target_page->DeleteRecord(rid.slot_id_, xid);
+  auto target_table_page = std::make_unique<TablePage>(buffer_pool_.GetPage(db_oid_, oid_, rid.page_id_));
+  target_table_page->DeleteRecord(rid.slot_id_, xid);
+
+  if (write_log) {
+    lsn_t lsn = log_manager_.AppendDeleteLog(xid, oid_, rid.page_id_, rid.slot_id_);
+    target_table_page->SetPageLSN(lsn);
+  }
 }
 
 Rid Table::UpdateRecord(const Rid &rid, xid_t xid, cid_t cid, std::shared_ptr<Record> record, bool write_log) {

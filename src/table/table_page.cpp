@@ -86,6 +86,11 @@ void TablePage::UndoDeleteRecord(slotid_t slot_id) {
   // 清除记录的删除标记
   // 将页面设为 dirty
   // LAB 2 BEGIN
+  char *record_data = page_data_ + slots_[slot_id].offset_;
+  Record *record = nullptr;
+  record->DeserializeHeaderFrom(record_data);
+  record->SetDeleted(false);
+  page_->SetDirty();
 }
 
 void TablePage::RedoInsertRecord(slotid_t slot_id, char *raw_record, db_size_t page_offset, db_size_t record_size) {

@@ -246,6 +246,9 @@ void LogManager::Redo() {
 void LogManager::Undo() {
   // 根据活跃事务表，将所有活跃事务回滚
   // LAB 2 BEGIN
+  for (const auto &pair : att_) {
+    Rollback(pair.first);
+  }
 }
 
 }  // namespace huadb

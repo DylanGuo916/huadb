@@ -156,6 +156,28 @@ void LogManager::Rollback(xid_t xid) {
   // 若日志在磁盘中，通过 disk_ 读取日志
   // 调用日志的 Undo 函数
   // LAB 2 BEGIN
+  if (att_.find(xid) == att_.cend()) {
+    return;
+  }
+  auto lsn = att_[xid];
+  while (lsn != NULL_LSN) {
+    std::shared_ptr<LogRecord> log_record;
+    if (lsn < flushed_lsn_) {
+      for (auto iterator = log_buffer_.cbegin(); iterator != log_buffer_.cend(); ++iterator) {
+        log_record = *iterator;
+        if (log_record->GetLSN() == lsn) {
+          break;
+        }
+      }
+    } else {
+      auto log_size = log_record->GetSize();
+      auto log = std::make_unique<char[]>(log_size);
+      disk_.ReadLog(lsn, log_record->GetSize(), log.get());
+      log_record->DeserializeFrom(lsn, log.get());
+    }
+    lsn = log_record->GetPrevLSN();
+    log_record->Undo(buffer_pool_, catalog_, *this, lsn);
+  }
 }
 
 void LogManager::Recover() {

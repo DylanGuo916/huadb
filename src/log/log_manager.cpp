@@ -173,10 +173,10 @@ void LogManager::Rollback(xid_t xid) {
       auto log_size = log_record->GetSize();
       auto log = std::make_unique<char[]>(log_size);
       disk_.ReadLog(lsn, log_record->GetSize(), log.get());
-      log_record->DeserializeFrom(lsn, log.get());
+      log_record->DeserializeFrom(log.get());
     }
     lsn = log_record->GetPrevLSN();
-    log_record->Undo(*buffer_pool_, *catalog_, *this, lsn);
+    log_record->Undo(*buffer_pool_, *catalog_, *this, lsn, next_lsn_);
   }
 }
 
